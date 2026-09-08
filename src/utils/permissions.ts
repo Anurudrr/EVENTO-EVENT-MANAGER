@@ -24,7 +24,11 @@ const writeStoredPermissions = (nextValue: StoredPermissionMap) => {
     return;
   }
 
-  window.localStorage.setItem(PERMISSION_STORAGE_KEY, JSON.stringify(nextValue));
+  try {
+    window.localStorage.setItem(PERMISSION_STORAGE_KEY, JSON.stringify(nextValue));
+  } catch {
+    // Storage quota or permissions error
+  }
 };
 
 const rememberPermissionDecision = (key: StoredPermissionKey, decision: StoredPermissionDecision) => {
@@ -65,7 +69,11 @@ const queryPermissionState = async (name: PermissionName) => {
 
 export const resetStoredPermissionDecisions = () => {
   if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(PERMISSION_STORAGE_KEY);
+    try {
+      window.localStorage.removeItem(PERMISSION_STORAGE_KEY);
+    } catch {
+      // Storage unavailable
+    }
   }
 };
 

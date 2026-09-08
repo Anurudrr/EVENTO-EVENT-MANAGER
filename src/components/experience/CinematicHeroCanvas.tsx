@@ -3,18 +3,23 @@ import * as THREE from 'three';
 import { isLowPowerDevice, shouldEnablePointerEffects, shouldReduceMotion } from '../../utils/performance';
 
 const createRenderer = (canvas: HTMLCanvasElement) => {
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true,
-    alpha: true,
-    powerPreference: 'high-performance',
-  });
+  try {
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
 
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setClearColor(0x000000, 0);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 
-  return renderer;
+    return renderer;
+  } catch (error) {
+    console.warn('[CinematicHeroCanvas] WebGL not supported or failed to initialize', error);
+    return null;
+  }
 };
 
 export const CinematicHeroCanvas: React.FC = React.memo(() => {
@@ -29,9 +34,13 @@ export const CinematicHeroCanvas: React.FC = React.memo(() => {
       return undefined;
     }
 
+    const renderer = createRenderer(canvas);
+    if (!renderer) {
+      return undefined;
+    }
+
     const lowPowerMode = isLowPowerDevice();
     const pointerEffectsEnabled = shouldEnablePointerEffects();
-    const renderer = createRenderer(canvas);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 100);
     camera.position.set(0, 0, 24);

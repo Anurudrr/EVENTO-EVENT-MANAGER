@@ -44,8 +44,12 @@ export const storeAuthSession = (user: User) => {
     return;
   }
 
-  storage.removeItem(AUTH_TOKEN_KEY);
-  storage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  try {
+    storage.removeItem(AUTH_TOKEN_KEY);
+    storage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  } catch (error) {
+    console.error('[storage] Failed to save auth session', error);
+  }
 };
 
 export const setStoredUser = (user: User) => {
@@ -55,7 +59,11 @@ export const setStoredUser = (user: User) => {
     return;
   }
 
-  storage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  try {
+    storage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  } catch (error) {
+    console.error('[storage] Failed to set stored user', error);
+  }
 };
 
 export const clearStoredAuth = () => {
@@ -65,8 +73,12 @@ export const clearStoredAuth = () => {
     return;
   }
 
-  storage.removeItem(AUTH_TOKEN_KEY);
-  storage.removeItem(AUTH_USER_KEY);
+  try {
+    storage.removeItem(AUTH_TOKEN_KEY);
+    storage.removeItem(AUTH_USER_KEY);
+  } catch (error) {
+    console.error('[storage] Failed to clear stored auth', error);
+  }
 };
 
 export const dispatchAuthExpired = () => {

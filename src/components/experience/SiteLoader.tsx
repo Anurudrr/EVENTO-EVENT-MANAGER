@@ -9,8 +9,12 @@ export const SiteLoader: React.FC = React.memo(() => {
       return true;
     }
 
-    return window.sessionStorage.getItem(STORAGE_KEY) !== '1'
-      && document.readyState !== 'complete';
+    try {
+      return window.sessionStorage.getItem(STORAGE_KEY) !== '1'
+        && document.readyState !== 'complete';
+    } catch {
+      return document.readyState !== 'complete';
+    }
   });
 
   useEffect(() => {
@@ -24,7 +28,11 @@ export const SiteLoader: React.FC = React.memo(() => {
 
     const finish = () => {
       window.requestAnimationFrame(() => {
-        window.sessionStorage.setItem(STORAGE_KEY, '1');
+        try {
+          window.sessionStorage.setItem(STORAGE_KEY, '1');
+        } catch {
+          // sessionStorage disabled or unavailable
+        }
         document.body.classList.remove('overflow-hidden');
         setVisible(false);
       });
@@ -65,3 +73,5 @@ export const SiteLoader: React.FC = React.memo(() => {
     </>
   );
 });
+
+SiteLoader.displayName = 'SiteLoader';
