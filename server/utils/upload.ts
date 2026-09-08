@@ -29,13 +29,13 @@ const IMAGE_SIGNATURES: Record<SupportedImageFormat, (buffer: Buffer) => boolean
 };
 
 const IMAGE_MIME_MAP: Record<SupportedImageFormat, Set<string>> = {
-  jpg: new Set(['image/jpeg', 'image/pjpeg']),
-  png: new Set(['image/png']),
+  jpg: new Set(['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/jfif']),
+  png: new Set(['image/png', 'image/x-png']),
   webp: new Set(['image/webp']),
 };
 
 const IMAGE_EXTENSION_MAP: Record<SupportedImageFormat, Set<string>> = {
-  jpg: new Set(['jpg', 'jpeg']),
+  jpg: new Set(['jpg', 'jpeg', 'jfif']),
   png: new Set(['png']),
   webp: new Set(['webp']),
 };
@@ -78,8 +78,13 @@ export const getSafeImageFilename = (filename: string, format: SupportedImageFor
 };
 
 export const isAllowedImageUpload = (file: Express.Multer.File) => {
-  const extension = normalizeExtension(file.originalname);
+  const extension = normalizeExtension(file.originalname || '');
   const mimeType = String(file.mimetype || '').trim().toLowerCase();
+
+  // If filename extension is missing (e.g. from canvas or camera stream), validate by MIME type
+  if (!extension) {
+    return Object.values(IMAGE_MIME_MAP).some((set) => set.has(mimeType));
+  }
 
   return (Object.keys(IMAGE_MIME_MAP) as SupportedImageFormat[]).some((format) => (
     IMAGE_EXTENSION_MAP[format].has(extension)

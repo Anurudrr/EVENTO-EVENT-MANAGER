@@ -23,13 +23,17 @@ const upload = multer({
     checkImageFile(file, cb);
   },
 });
-const profilePictureUpload = upload.single('profilePic');
+const profilePictureUpload = upload.fields([
+  { name: 'profilePic', maxCount: 1 },
+  { name: 'profilePicture', maxCount: 1 },
+  { name: 'image', maxCount: 1 },
+]);
 
 router.use(protect);
 
 router.get('/profile', getProfile);
 router.post('/upload-pfp', profilePictureUpload, uploadProfilePicture);
-router.put('/profile', updateProfile);
+router.put('/profile', profilePictureUpload, updateProfile);
 router.get('/wishlist', getWishlist);
 router.put('/wishlist/:serviceId/toggle', toggleWishlist);
 router.post('/wishlist/:serviceId', addToWishlist);

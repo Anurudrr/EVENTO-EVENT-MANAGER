@@ -66,10 +66,8 @@ const ProfilePage: React.FC = () => {
   }, [user]);
 
   const currentProfileImage = previewUrl
-    || formData.profilePicture
-    || (user.profilePicture
-      ? `${user.profilePicture}${user.profilePicture.includes('?') ? '&' : '?'}t=${imageVersion}`
-      : '');
+    || (formData.profilePicture ? withCacheBust(formData.profilePicture, imageVersion) : '')
+    || (user?.profilePicture ? withCacheBust(user.profilePicture, imageVersion) : '');
 
   useEffect(() => () => {
     if (previewUrl?.startsWith('blob:')) {
@@ -78,10 +76,14 @@ const ProfilePage: React.FC = () => {
   }, [previewUrl]);
 
   const setProfilePreview = (file: File) => {
-    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-      const message = 'Please upload a valid image file';
+    const isImageMime = file.type ? file.type.toLowerCase().startsWith('image/') : false;
+    const isImageExt = /\.(jpe?g|png|webp|jfif|avif|gif)$/i.test(file.name || '');
+
+    if (!isImageMime && !isImageExt) {
+      const message = 'Please upload a valid image file (PNG, JPG, WEBP)';
       setErrorMessage(message);
       showToast(message, 'error');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return '';
     }
 
@@ -89,6 +91,7 @@ const ProfilePage: React.FC = () => {
       const message = 'File size too large (max 5MB)';
       setErrorMessage(message);
       showToast(message, 'error');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return '';
     }
 
@@ -122,9 +125,12 @@ const ProfilePage: React.FC = () => {
         throw new Error('Profile picture upload did not return an image URL');
       }
 
+      const version = Date.now();
+      const bustedUrl = withCacheBust(uploadedProfilePicture, version);
+
       setFormData((current) => ({
         ...current,
-        profilePicture: uploadedProfilePicture,
+        profilePicture: bustedUrl,
         ...(uploadResponse.user ? {
           name: uploadResponse.user.name || current.name,
           email: uploadResponse.user.email || current.email,
@@ -138,27 +144,29 @@ const ProfilePage: React.FC = () => {
       }));
 
       if (uploadResponse.user) {
-        syncUser(uploadResponse.user);
+        syncUser({
+          ...uploadResponse.user,
+          profilePicture: bustedUrl,
+        });
       }
 
-      setImageVersion(Date.now());
+      setImageVersion(version);
       setSuccessMessage('Profile picture updated successfully!');
       showToast('Profile picture updated successfully', 'success');
       setSelectedProfileImage(null);
-      setPreviewUrl(null);
 
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-
-      URL.revokeObjectURL(objectUrl);
     } catch (err: any) {
       const message = getErrorMessage(err, 'Failed to upload profile picture');
-      URL.revokeObjectURL(objectUrl);
       setPreviewUrl(null);
       setSelectedProfileImage(null);
       setErrorMessage(message);
       showToast(message, 'error');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } finally {
       setIsUploading(false);
     }
@@ -193,10 +201,21 @@ const ProfilePage: React.FC = () => {
     setSuccessMessage(null);
 
     try {
+      let finalProfilePicture = formData.profilePicture;
+
+      if (selectedProfileImage) {
+        try {
+          const uploadResponse = await userService.uploadProfileImage(selectedProfileImage);
+          finalProfilePicture = uploadResponse.user?.profilePicture || uploadResponse.imageUrl || finalProfilePicture;
+        } catch (uploadErr) {
+          console.error('[profile:submit:image-upload]', uploadErr);
+        }
+      }
+
       const profilePayload: Partial<User> = {
         name: formData.name.trim(),
         bio: formData.bio.trim(),
-        profilePicture: formData.profilePicture,
+        profilePicture: finalProfilePicture,
       };
 
       if (user?.role === 'organizer') {
@@ -222,13 +241,23 @@ const ProfilePage: React.FC = () => {
         profilePayload.responseTimeHours = parsedResponseTimeHours;
       }
 
-      await updateProfile(profilePayload);
-      setImageVersion(Date.now());
+      const updated = await updateProfile(profilePayload);
+      const version = Date.now();
+      setImageVersion(version);
+      if (updated) {
+        syncUser({
+          ...updated,
+          profilePicture: withCacheBust(updated.profilePicture, version),
+        });
+      }
       setSuccessMessage('Profile updated successfully!');
       showToast('Profile updated successfully', 'success');
       setIsEditing(false);
       setSelectedProfileImage(null);
       setPreviewUrl(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (err: any) {
       const message = getErrorMessage(err, 'Failed to update profile');
       setErrorMessage(message);
@@ -244,8 +273,9 @@ const ProfilePage: React.FC = () => {
     }
     setPreviewUrl(null);
     setSelectedProfileImage(null);
-    setFormData(prev => ({ ...prev, profilePicture: '' }));
+    setFormData((prev) => ({ ...prev, profilePicture: '' }));
     if (fileInputRef.current) fileInputRef.current.value = '';
+    setImageVersion(Date.now());
   };
 
   const resetEditingState = () => {

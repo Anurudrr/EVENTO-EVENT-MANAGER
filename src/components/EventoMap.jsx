@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, LocateFixed, MapPin } from 'lucide-react';
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { formatDate } from '../utils';
+
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+const TILE_ATTR = '&copy; OpenStreetMap &copy; CARTO';
 
 const DEFAULT_CENTER = [20.5937, 78.9629];
 const DEFAULT_ZOOM = 5;
@@ -152,6 +155,30 @@ export const EventoMap = React.memo(function EventoMap({
     isLoading: false,
     error: '',
   });
+  const [isMapVisible, setIsMapVisible] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setIsMapVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsMapVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100px', threshold: 0.01 }
+    );
+
+    if (mapRef.current) {
+      observer.observe(mapRef.current);
+    }
+    return () => observer.disconnect();
+  }, []);
 
   const markerItems = useMemo(
     () => events.filter(hasCoordinates).map((item) => ({
@@ -175,6 +202,13 @@ export const EventoMap = React.memo(function EventoMap({
 
   const canSelect = selectable || typeof onLocationSelect === 'function';
   const mapHeight = typeof height === 'number' ? `${height}px` : height;
+
+  const staticMapUrl = useMemo(() => {
+    const center = markerItems.length > 0
+      ? `${markerItems[0].lat},${markerItems[0].lng}`
+      : '20.5937,78.9629';
+    return `https://staticmap.openstreetmap.de/staticmap.php?center=${center}&zoom=10&size=800x400&markers=${markerItems.map(m => `${m.lat},${m.lng},red-pushpin`).join('|')}`;
+  }, [markerItems]);
 
   const handleUseMyLocation = () => {
     if (!canSelect || typeof onLocationSelect !== 'function') {
@@ -222,71 +256,82 @@ export const EventoMap = React.memo(function EventoMap({
   };
 
   return (
-    <div className={joinClassNames('evento-map', className)}>
+    <div className={joinClassNames('evento-map', className)} ref={mapRef}>
       <div
         className="evento-map__surface"
         style={{ height: mapHeight, minHeight: mapHeight }}
         data-lenis-prevent
       >
-        <MapContainer
-          center={DEFAULT_CENTER}
-          zoom={DEFAULT_ZOOM}
-          className="evento-map__canvas"
-          preferCanvas
-          scrollWheelZoom={false}
-          zoomControl
-        >
-          <TileLayer
-            attribution='&copy; OpenStreetMap contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        {!isMapVisible ? (
+          <img
+            src={staticMapUrl}
+            alt="Map preview"
+            className="evento-map__static w-full h-full object-cover"
+            loading="lazy"
           />
+        ) : (
+          <MapContainer
+            center={DEFAULT_CENTER}
+            zoom={DEFAULT_ZOOM}
+            className="evento-map__canvas"
+            preferCanvas
+            scrollWheelZoom={false}
+            zoomControl
+          >
+            <TileLayer
+              attribution={TILE_ATTR}
+              url={TILE_URL}
+              maxZoom={19}
+              crossOrigin=""
+            />
 
-          <ViewportController
-            markerItems={markerItems}
-            selectedLocation={normalizedSelectedLocation}
-          />
-          <LocationSelector enabled={canSelect} onLocationSelect={onLocationSelect} />
+            <ViewportController
+              markerItems={markerItems}
+              selectedLocation={normalizedSelectedLocation}
+            />
+            <LocationSelector enabled={canSelect} onLocationSelect={onLocationSelect} />
 
-          {markerItems.map((item) => {
-            const dateMeta = getDateMeta(item);
+            {markerItems.map((item) => {
+              const dateMeta = getDateMeta(item);
 
-            return (
+              return (
+                <Marker
+                  key={item._id || `${item.lat}-${item.lng}`}
+                  position={[item.lat, item.lng]}
+                  icon={eventMarkerIcon}
+                >
+                  <Popup>
+                    <div className="evento-map__popup">
+                      <p className="evento-map__popup-eyebrow">{dateMeta.label}</p>
+                      <h3 className="evento-map__popup-title">{item.title || 'Untitled event'}</h3>
+                      <p className="evento-map__popup-copy">{dateMeta.value}</p>
+                      <p className="evento-map__popup-copy">
+                        {item.location || `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`}
+                      </p>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+
+            {normalizedSelectedLocation && (
               <Marker
-                key={item._id || `${item.lat}-${item.lng}`}
-                position={[item.lat, item.lng]}
-                icon={eventMarkerIcon}
+                position={[normalizedSelectedLocation.lat, normalizedSelectedLocation.lng]}
+                icon={selectedMarkerIcon}
               >
                 <Popup>
                   <div className="evento-map__popup">
-                    <p className="evento-map__popup-eyebrow">{dateMeta.label}</p>
-                    <h3 className="evento-map__popup-title">{item.title || 'Untitled event'}</h3>
-                    <p className="evento-map__popup-copy">{dateMeta.value}</p>
+                    <p className="evento-map__popup-eyebrow">Selected</p>
+                    <h3 className="evento-map__popup-title">{selectedLabel}</h3>
                     <p className="evento-map__popup-copy">
-                      {item.location || `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`}
+                      {normalizedSelectedLocation.lat.toFixed(5)}, {normalizedSelectedLocation.lng.toFixed(5)}
                     </p>
                   </div>
                 </Popup>
               </Marker>
-            );
-          })}
-
-          {normalizedSelectedLocation && (
-            <Marker
-              position={[normalizedSelectedLocation.lat, normalizedSelectedLocation.lng]}
-              icon={selectedMarkerIcon}
-            >
-              <Popup>
-                <div className="evento-map__popup">
-                  <p className="evento-map__popup-eyebrow">Selected</p>
-                  <h3 className="evento-map__popup-title">{selectedLabel}</h3>
-                  <p className="evento-map__popup-copy">
-                    {normalizedSelectedLocation.lat.toFixed(5)}, {normalizedSelectedLocation.lng.toFixed(5)}
-                  </p>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-        </MapContainer>
+            )}
+          </MapContainer>
+        )}
 
         {canSelect && (
           <button

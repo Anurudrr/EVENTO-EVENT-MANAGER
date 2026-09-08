@@ -21,6 +21,12 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 'md',
   className
 }) => {
+  const [hasError, setHasError] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
   const sizes = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12',
@@ -37,37 +43,30 @@ export const Avatar: React.FC<AvatarProps> = ({
     '2xl': 'w-16 h-16',
   };
 
+  const resolvedUrl = src ? getImageUrl(src) : '';
+  const showImage = Boolean(resolvedUrl) && resolvedUrl !== FALLBACK_IMAGE_URL && !hasError;
+
   return (
     <div
       className={cn(
-        'relative rounded-none overflow-hidden bg-noir-bg border border-noir-border flex items-center justify-center shrink-0 shadow-2xl',
+        'relative rounded-none overflow-hidden bg-noir-bg border border-noir-border flex items-center justify-center shrink-0 shadow-2xl select-none',
         sizes[size],
         className
       )}
     >
-      {src ? (
+      {showImage ? (
         <img
-          src={getImageUrl(src)}
+          key={resolvedUrl}
+          src={resolvedUrl}
           alt={name || 'Avatar'}
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
           loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = DEFAULT_AVATAR_URL;
-          }}
+          onError={() => setHasError(true)}
         />
       ) : (
-        <div className="relative h-full w-full">
-          <img
-            src={DEFAULT_AVATAR_URL}
-            alt={name || 'Default avatar'}
-            className="h-full w-full object-cover opacity-80"
-            loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = FALLBACK_IMAGE_URL;
-            }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center text-noir-accent/40">
+        <div className="relative h-full w-full bg-noir-card flex items-center justify-center">
+          <div className="flex items-center justify-center text-noir-accent/60">
             <UserIcon className={iconSizes[size]} />
           </div>
         </div>

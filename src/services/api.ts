@@ -4,7 +4,7 @@ import { AUTH_EXPIRED_EVENT, clearStoredAuth } from '../utils/storage';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 8000,
+  timeout: 30000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -20,12 +20,19 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/auth/logout',
 ]);
 
-// Add a request interceptor to add the auth token to every request
+// Add a request interceptor to handle multipart requests
 api.interceptors.request.use(
   (config) => {
     // Let the browser set the multipart boundary for FormData requests.
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+        if (typeof (config.headers as any).delete === 'function') {
+          (config.headers as any).delete('Content-Type');
+          (config.headers as any).delete('content-type');
+        }
+      }
     }
 
     return config;

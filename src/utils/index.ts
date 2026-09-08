@@ -16,9 +16,17 @@ export const getSafeText = (value: unknown, fallback: string) => (
   isNonEmptyText(value) ? value.trim() : fallback
 );
 
-export const withCacheBust = (url?: string | null) => {
+export const withCacheBust = (url?: string | null, timestamp?: number) => {
   if (!isNonEmptyImage(url)) return url || '';
-  return /[?&]t=\d+/.test(url) ? url : url;
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+
+  // Clean existing timestamp if present
+  const cleanUrl = url.replace(/([?&])t=\d+(&?)/, (_match, prefix, suffix) => {
+    return suffix ? prefix : '';
+  }).replace(/[?&]$/, '');
+
+  const ts = timestamp || Date.now();
+  return `${cleanUrl}${cleanUrl.includes('?') ? '&' : '?'}t=${ts}`;
 };
 
 export const getImageUrl = (url?: string | null) => {
@@ -58,14 +66,13 @@ export const getServiceImageUrls = (service: any) => resolveImageList(
 ).map((image) => withCacheBust(image) || image);
 
 export const getProfileImageUrl = (user: any) => {
-  const [profileImage] = resolveImageList(
-    user?.profilePicture,
-    user?.profileImage,
-    user?.image,
-    user?.imageUrl,
-  );
+  const candidate = user?.profilePicture || user?.profileImage || user?.image || user?.imageUrl;
+  if (!isNonEmptyImage(candidate)) {
+    return '';
+  }
 
-  return withCacheBust(profileImage) || profileImage;
+  const resolved = getImageUrl(candidate);
+  return withCacheBust(resolved) || resolved;
 };
 
 export const getServiceTitle = (service?: { title?: string } | null) => getSafeText(service?.title, DEFAULT_SERVICE_TITLE);
