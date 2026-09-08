@@ -54,7 +54,7 @@ const errorHandler = (err: ErrorResponse, req: Request, res: Response, next: Nex
   }
 
   if (err.message === 'Images only!') {
-    error = new Error('Image upload failed: only JPG, PNG, and WebP files are allowed.') as ErrorResponse;
+    error = new Error('Image upload failed: only image files (JPG, PNG, WebP, GIF, AVIF, BMP) are allowed.') as ErrorResponse;
     error.statusCode = 400;
   }
 

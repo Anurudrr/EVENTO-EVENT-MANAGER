@@ -17,10 +17,7 @@ const saveImageLocally = async (buffer: Buffer, filename: string, folderSuffix: 
   const uploadsRoot = path.join(process.cwd(), 'uploads', folderSuffix);
   await mkdir(uploadsRoot, { recursive: true });
 
-  const format = detectImageFormat(buffer);
-  if (!format) {
-    throw new Error('Images only!');
-  }
+  const format = detectImageFormat(buffer, filename) || 'jpg';
 
   const extension = getNormalizedImageExtension(format);
   const safeName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
@@ -36,10 +33,7 @@ export const uploadImageBuffer = async (
   filename: string,
   folderSuffix: string,
 ) => {
-  const format = detectImageFormat(buffer);
-  if (!format) {
-    throw new Error('Images only!');
-  }
+  const format = detectImageFormat(buffer, filename) || 'jpg';
 
   const safeFilename = getSafeImageFilename(filename, format);
   let cloudinaryConfig: ReturnType<typeof getCloudinaryConfig> | null = null;

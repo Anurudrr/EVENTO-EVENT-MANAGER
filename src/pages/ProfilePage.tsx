@@ -77,10 +77,10 @@ const ProfilePage: React.FC = () => {
 
   const setProfilePreview = (file: File) => {
     const isImageMime = file.type ? file.type.toLowerCase().startsWith('image/') : false;
-    const isImageExt = /\.(jpe?g|png|webp|jfif|avif|gif)$/i.test(file.name || '');
+    const isImageExt = /\.(jpe?g|png|webp|jfif|pjpeg|avif|gif|bmp|svg|heic|tiff?|ico)$/i.test(file.name || '');
 
     if (!isImageMime && !isImageExt) {
-      const message = 'Please upload a valid image file (PNG, JPG, WEBP)';
+      const message = 'Please upload a valid image file (JPG, PNG, WebP, GIF, etc.)';
       setErrorMessage(message);
       showToast(message, 'error');
       if (fileInputRef.current) fileInputRef.current.value = '';
