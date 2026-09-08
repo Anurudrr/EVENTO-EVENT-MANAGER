@@ -20,7 +20,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { bookingService } from '../services/bookingService';
 import { userService } from '../services/userService';
 import { Booking, Service, User } from '../types';
-import { DEFAULT_USER_BIO, formatResponseTime, formatVerificationStatus, getErrorMessage, getUserDisplayName } from '../utils';
+import { DEFAULT_USER_BIO, formatResponseTime, formatVerificationStatus, getErrorMessage, getUserDisplayName, withCacheBust } from '../utils';
 
 const ProfilePage: React.FC = () => {
   const { user, updateProfile, syncUser } = useAuth();
