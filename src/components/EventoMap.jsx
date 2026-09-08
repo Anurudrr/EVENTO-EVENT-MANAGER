@@ -156,7 +156,7 @@ export const EventoMap = React.memo(function EventoMap({
     error: '',
   });
   const [isMapVisible, setIsMapVisible] = useState(false);
-  const mapRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
